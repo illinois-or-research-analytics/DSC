@@ -1,0 +1,6 @@
+[submodule "constrained-clustering"]
+	path = constrained-clustering
+	url = git@github.com:MinhyukPark/constrained-clustering.git
+[submodule "ClusterMerger"]
+	path = ClusterMerger
+	url = git@github.com:MinhyukPark/ClusterMerger.git

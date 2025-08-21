@@ -1,0 +1,144 @@
+Graph path: test/input/bitcoin_alpha.tsv
+Output path: test/output/pipeline/bitcoin_alpha//dsc-flow-iter//com.tsv
+Density path: test/output/pipeline/bitcoin_alpha//dsc-flow-iter//density.tsv
+
+Processing subgraph of 3783 nodes and 14124 edges.
+Found cluster 0 with 152 nodes and density 15.7632
+Found and removing 910 isolated vertices.
+
+Processing subgraph of 2721 nodes and 5102 edges.
+Found cluster 911 with 27 nodes and density 5.44444
+Found and removing 65 isolated vertices.
+
+Processing subgraph of 2629 nodes and 4717 edges.
+Found cluster 977 with 166 nodes and density 3.98193
+Found and removing 357 isolated vertices.
+
+Processing subgraph of 2106 nodes and 2739 edges.
+Found cluster 1335 with 17 nodes and density 2.82353
+Found and removing 68 isolated vertices.
+
+Processing subgraph of 2021 nodes and 2514 edges.
+Found cluster 1404 with 9 nodes and density 2.33333
+Found and removing 3 isolated vertices.
+
+Processing subgraph of 2009 nodes and 2486 edges.
+Found cluster 1408 with 118 nodes and density 2.05932
+Found and removing 186 isolated vertices.
+
+Processing subgraph of 1705 nodes and 1753 edges.
+Found cluster 1595 with 13 nodes and density 1.84615
+Found and removing 18 isolated vertices.
+
+Processing subgraph of 1674 nodes and 1702 edges.
+Found cluster 1614 with 39 nodes and density 1.69231
+Found and removing 41 isolated vertices.
+
+Processing subgraph of 1594 nodes and 1535 edges.
+Found cluster 1656 with 7 nodes and density 1.57143
+Found and removing 1 isolated vertices.
+
+Processing subgraph of 1586 nodes and 1522 edges.
+Found cluster 1658 with 8 nodes and density 1.5
+Found and removing 16 isolated vertices.
+
+Processing subgraph of 1562 nodes and 1482 edges.
+Found cluster 1675 with 10 nodes and density 1.4
+Found and removing 8 isolated vertices.
+
+Processing subgraph of 1544 nodes and 1451 edges.
+Found cluster 1684 with 89 nodes and density 1.37079
+Found and removing 97 isolated vertices.
+
+Processing subgraph of 1358 nodes and 1168 edges.
+Found cluster 1782 with 6 nodes and density 1.33333
+Found and removing 6 isolated vertices.
+
+Processing subgraph of 1346 nodes and 1154 edges.
+Found cluster 1789 with 4 nodes and density 1.25
+
+Processing subgraph of 1342 nodes and 1148 edges.
+Found cluster 1790 with 13 nodes and density 1.23077
+Found and removing 6 isolated vertices.
+
+Processing subgraph of 1323 nodes and 1118 edges.
+Found cluster 1797 with 6 nodes and density 1.16667
+Found and removing 1 isolated vertices.
+
+Processing subgraph of 1316 nodes and 1110 edges.
+Found cluster 1799 with 47 nodes and density 1.14894
+Found and removing 68 isolated vertices.
+
+Processing subgraph of 1201 nodes and 955 edges.
+Found cluster 1868 with 48 nodes and density 1.0625
+Found and removing 30 isolated vertices.
+
+Processing subgraph of 1123 nodes and 848 edges.
+Found cluster 1899 with 45 nodes and density 1
+
+Processing subgraph of 1078 nodes and 803 edges.
+Found cluster 1900 with 42 nodes and density 0.97619
+
+Processing subgraph of 1036 nodes and 762 edges.
+Found cluster 1901 with 34 nodes and density 0.970588
+
+Processing subgraph of 1002 nodes and 729 edges.
+Found cluster 1902 with 32 nodes and density 0.96875
+
+Processing subgraph of 970 nodes and 698 edges.
+Found cluster 1903 with 30 nodes and density 0.966667
+
+Processing subgraph of 940 nodes and 669 edges.
+Found cluster 1904 with 28 nodes and density 0.964286
+
+Processing subgraph of 912 nodes and 642 edges.
+Found cluster 1905 with 24 nodes and density 0.958333
+
+Processing subgraph of 888 nodes and 619 edges.
+Found cluster 1906 with 19 nodes and density 0.947368
+
+Processing subgraph of 869 nodes and 601 edges.
+Found cluster 1907 with 17 nodes and density 0.941176
+
+Processing subgraph of 852 nodes and 585 edges.
+Found cluster 1908 with 15 nodes and density 0.933333
+
+Processing subgraph of 837 nodes and 571 edges.
+Found cluster 1909 with 13 nodes and density 0.923077
+
+Processing subgraph of 824 nodes and 559 edges.
+Found cluster 1910 with 24 nodes and density 0.916667
+
+Processing subgraph of 800 nodes and 537 edges.
+Found cluster 1911 with 44 nodes and density 0.909091
+
+Processing subgraph of 756 nodes and 497 edges.
+Found cluster 1912 with 60 nodes and density 0.9
+
+Processing subgraph of 696 nodes and 443 edges.
+Found cluster 1913 with 18 nodes and density 0.888889
+
+Processing subgraph of 678 nodes and 427 edges.
+Found cluster 1914 with 16 nodes and density 0.875
+
+Processing subgraph of 662 nodes and 413 edges.
+Found cluster 1915 with 28 nodes and density 0.857143
+
+Processing subgraph of 634 nodes and 389 edges.
+Found cluster 1916 with 24 nodes and density 0.833333
+
+Processing subgraph of 610 nodes and 369 edges.
+Found cluster 1917 with 60 nodes and density 0.8
+
+Processing subgraph of 550 nodes and 321 edges.
+Found cluster 1918 with 88 nodes and density 0.75
+
+Processing subgraph of 462 nodes and 255 edges.
+Found cluster 1919 with 144 nodes and density 0.666667
+
+Processing subgraph of 318 nodes and 159 edges.
+Found cluster 1920 with 318 nodes and density 0.5
+
+[TIME] Writing final assignments: 0 ms
+[TIME] Writing final density vector: 1 ms
+[TIME] Total execution: 60 ms

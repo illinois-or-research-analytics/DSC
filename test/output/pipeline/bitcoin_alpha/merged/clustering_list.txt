@@ -1,0 +1,2 @@
+test/output/pipeline/bitcoin_alpha//leiden-mod//com.tsv
+test/output/pipeline/bitcoin_alpha//dsc-flow-iter//com.tsv
