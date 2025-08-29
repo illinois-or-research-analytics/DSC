@@ -65,6 +65,7 @@ where
 The output will be saved in the specified `<output_directory>`. The main results are:
 - Stage 1:
     - `dsc-flow-iter/com.tsv`: The community detection result of DSC-Flow-Iter
+    - `dsc-flow-iter+cc/com.tsv`: The community detection result after post-processing with CC
 - Stage 2:
     - `leiden-mod/com.tsv`: The community detection result of Leiden-Mod
 - Stage 3:
@@ -78,6 +79,22 @@ Hence, the output community detection results will be available in `<output_dire
 
 ## Installation
 
+## Setup external dependencies
+
+Setup `ClusterMerger` for combining clusterings (require cmake, bison, flex)
+```bash
+cd ClusterMerger
+./setup.sh
+./easy_build_and_compile.sh
+```
+
+Setup `constrained-clustering` for post-processing with CC and WCC (require cmake, bison, flex)
+```bash
+cd constrained-clustering
+./setup.sh
+./easy_build_and_compile.sh
+```
+
 ### Running a density based technique
 
 To build and compile density-based methods, run the following command:
@@ -85,25 +102,11 @@ To build and compile density-based methods, run the following command:
 bash build.sh
 ```
 
-### Running the recommended pipeline
+Note that it is recommended to post-process the result with CC.
 
-In addition to the previous steps, for the recommended pipeline, you need to install additional dependencies.
+### Running the recommended pipeline
 
 To install additional Python dependencies, run:
 ```bash
 pip install leidenalg pandas
-```
-
-Setup `ClusterMerger` for Stage 3 (require cmake, bison, flex)
-```bash
-cd ClusterMerger
-./setup.sh
-./easy_build_and_compile.sh
-```
-
-Setup `constrained-clustering` for Stage 4 (require cmake, bison, flex)
-```bash
-cd constrained-clustering
-./setup.sh
-./easy_build_and_compile.sh
 ```

@@ -34,11 +34,28 @@ if [ ! -f ${out_flow}/com.tsv ]; then
     exit 1
 fi
 
+out_flow_cc=${out_root}/dsc-flow-iter+cc/
+mkdir -p ${out_flow_cc}
+{ /usr/bin/time -v ./constrained-clustering/constrained_clustering \
+    MincutOnly \
+    --edgelist ${edgelist} \
+    --existing-clustering ${out_flow}/com.tsv \
+    --num-processors 1 \
+    --output-file ${out_flow_cc}/com.tsv \
+    --log-file ${out_flow_cc}/cc.log \
+    --log-level 1 \
+    --connectedness-criterion 0; } 2> ${out_flow_cc}/error.log
+
+if [ ! -f ${out_flow_cc}/com.tsv ]; then
+    echo "Error: DSC-Flow-Iter+CC did not produce a community file at ${out_flow_cc}/com.tsv"
+    exit 1
+fi
+
 out_merge=${out_root}/merged/
 mkdir -p ${out_merge}
 
 echo "${out_leiden_mod}/com.tsv" > ${out_merge}/clustering_list.txt
-echo "${out_flow}/com.tsv" >> ${out_merge}/clustering_list.txt
+echo "${out_flow_cc}/com.tsv" >> ${out_merge}/clustering_list.txt
 
 { /usr/bin/time -v ./ClusterMerger/cluster_merger \
     Weighted \
