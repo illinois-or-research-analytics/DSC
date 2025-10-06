@@ -10,6 +10,19 @@ The repository also contains the script to run a recommended pipeline, which con
 3. Combining the clusterings from Stage 1 and 2 to obtain a network using the cluster ensemble technique
 4. Running Leiden-CPM(0.01) on the obtained network from Stage 3 and post-processing the result with WCC.
 
+The paper and supplementary materials are on the arxiv ([link](https://arxiv.org/abs/2508.17013)). If you use our work, you can use the following BibTeX entry to cite.
+```
+@misc{vule2025densesubgraphclusteringnew,
+      title={Dense Subgraph Clustering and a New Cluster Ensemble Method}, 
+      author={The-Anh Vu-Le and João Alfredo Cardoso Lamy and Tomás Alessi and Ian Chen and Minhyuk Park and Elfarouk Harb and George Chacko and Tandy Warnow},
+      year={2025},
+      eprint={2508.17013},
+      archivePrefix={arXiv},
+      primaryClass={cs.SI},
+      url={https://arxiv.org/abs/2508.17013}, 
+}
+```
+
 ## Usage
 
 ### Running a density-based technique
