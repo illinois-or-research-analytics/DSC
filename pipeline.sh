@@ -3,6 +3,11 @@
 edgelist=$1
 out_root=$2
 
+if [ $# -ne 2 ]; then
+    echo "Usage: ./pipeline.sh <edgelist> <output-root>"
+    exit 1
+fi
+
 if [ ! -f ${edgelist} ]; then
     echo "Error: Edgelist file ${edgelist} not found!"
     exit 1

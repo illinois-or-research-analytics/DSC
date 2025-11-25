@@ -1,0 +1,3 @@
+[INFO][0-0:0:0](t=0s) Loading the initial graph
+[INFO][0-0:0:0](t=0s) Finished loading the initial graph
+[INFO][0-0:0:0](t=0s) Writing output to: test/output/bitcoin_alpha//dsc-flow-iter+cc//com.tsv
