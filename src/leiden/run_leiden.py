@@ -38,8 +38,13 @@ def parse_args():
     parser.add_argument(
         "--seed",
         type=int,
-        help="Random seed for reproducibility (default: 123456)",
-        default=123456,
+        help="Random seed for reproducibility (default: 1234)",
+        default=1234,
+    )
+    parser.add_argument(
+        "--weighted",
+        action="store_true",
+        help="Whether the graph is weighted",
     )
     parser.add_argument(
         "--n-iterations",
@@ -57,6 +62,7 @@ model = args.model
 resolution = args.resolution
 seed = args.seed
 n_iterations = args.n_iterations
+is_weighted = args.weighted
 
 # ===========
 
@@ -74,10 +80,7 @@ logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
 start = time.perf_counter()
 
-df = pd.read_csv(edgelist_fn, dtype=str, sep="\t")
-g = ig.Graph.TupleList(
-    df.itertuples(index=False), directed=False, vertex_name_attr="name"
-)
+g = ig.Graph.Read_Ncol(edgelist_fn, directed=False)
 
 elapsed = time.perf_counter() - start
 logging.info(f"[TIME] Loading network: {elapsed}")
@@ -93,10 +96,15 @@ if model == "cpm":
         resolution_parameter=resolution,
         seed=seed,
         n_iterations=n_iterations,
+        weights="weight" if is_weighted else None,
     )
 elif model == "mod":
     partition = la.find_partition(
-        g, la.ModularityVertexPartition, seed=seed, n_iterations=n_iterations
+        g,
+        la.ModularityVertexPartition,
+        seed=seed,
+        n_iterations=n_iterations,
+        weights="weight" if is_weighted else None,
     )
 else:
     raise ValueError(f"Unknown model: {model}")
