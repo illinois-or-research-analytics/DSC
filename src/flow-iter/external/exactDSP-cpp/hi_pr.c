@@ -900,7 +900,9 @@ excessType min_cut(_n, _m, _nodes, _arcs, _cap, _source, _sink, _nMin)
 
 #endif
 
-    return sink -> excess;
+    excessType result = sink->excess;
+    deallocDS();
+    return result;
 }
 
 #ifndef NO_MAIN

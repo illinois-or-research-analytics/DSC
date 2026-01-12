@@ -36,11 +36,11 @@ pair<vector<char>, double> find_densest_subgraph(const vector<pair<int, int>> &e
   double density = (n > 0) ? (1.0 * m / n) : 0.0;
   double prev_density = -1.0;
 
-  int max_flow_nodes_alloc = n + m + 2;
-  long max_flow_arcs_alloc = 2L * n + 6L * m + 100;
+  long long max_flow_nodes_alloc = n + m + 2;
+  long long max_flow_arcs_alloc = 2LL * n + 6LL * m + 100;
 
-  vector<long> deg(max_flow_nodes_alloc);
-  vector<long> cur(max_flow_nodes_alloc);
+  vector<long long> deg(max_flow_nodes_alloc);
+  vector<long long> cur(max_flow_nodes_alloc);
   vector<node> nodes(max_flow_nodes_alloc + 1);
   vector<arc> arcs(max_flow_arcs_alloc);
   vector<cType> cap(max_flow_arcs_alloc);
@@ -52,11 +52,11 @@ pair<vector<char>, double> find_densest_subgraph(const vector<pair<int, int>> &e
   {
     prev_density = density;
 
-    vector<int> old2new(n, -1);
-    vector<int> new2old;
+    vector<long long> old2new(n, -1);
+    vector<long long> new2old;
     new2old.reserve(n);
-    int n1 = 0;
-    for (int u = 0; u < n; ++u)
+    long long n1 = 0;
+    for (long long u = 0; u < n; ++u)
     {
       if (subg[u])
       {
@@ -74,37 +74,37 @@ pair<vector<char>, double> find_densest_subgraph(const vector<pair<int, int>> &e
       continue;
     }
 
-    vector<pair<int, int>> edges1;
+    vector<pair<long long, long long>> edges1;
     edges1.reserve(m);
     for (const auto &e : edges)
     {
-      int u_new = old2new[e.first];
-      int v_new = old2new[e.second];
+      long long u_new = old2new[e.first];
+      long long v_new = old2new[e.second];
       if (u_new != -1 && v_new != -1)
       {
         edges1.emplace_back(u_new, v_new);
       }
     }
 
-    int m1 = edges1.size();
-    int SRC = n1 + m1, SNK = SRC + 1, NND = SNK + 1;
+    long long m1 = edges1.size();
+    long long SRC = n1 + m1, SNK = SRC + 1, NND = SNK + 1;
 
     fill(deg.begin(), deg.begin() + NND, 0L);
-    for (int i = 0; i < n1; ++i)
+    for (long long i = 0; i < n1; ++i)
       deg[i] = 1;
     for (const auto &e1 : edges1)
     {
       deg[e1.first]++;
       deg[e1.second]++;
     }
-    for (int j = 0; j < m1; ++j)
+    for (long long j = 0; j < m1; ++j)
       deg[n1 + j] = 3;
     deg[SRC] = n1;
     deg[SNK] = m1;
 
-    for (int i = 1; i < NND; ++i)
+    for (long long i = 1; i < NND; ++i)
       deg[i] += deg[i - 1];
-    long tot_arcs = (NND > 0) ? deg[NND - 1] : 0;
+    long long tot_arcs = (NND > 0) ? deg[NND - 1] : 0;
 
     if (tot_arcs > max_flow_arcs_alloc)
     {
@@ -114,15 +114,15 @@ pair<vector<char>, double> find_densest_subgraph(const vector<pair<int, int>> &e
 
     if (NND > 0)
       cur[0] = 0;
-    for (int i = 1; i < NND; ++i)
+    for (long long i = 1; i < NND; ++i)
       cur[i] = deg[i - 1];
-    for (int i = 0; i < NND; ++i)
+    for (long long i = 0; i < NND; ++i)
       nodes_ptr[i].first = arcs.data() + cur[i];
 
-    auto add_arc = [&](int u_arc, int v_arc, cType capacity_val)
+    auto add_arc = [&](long long u_arc, long long v_arc, cType capacity_val)
     {
-      long pu = cur[u_arc]++;
-      long pv = cur[v_arc]++;
+      long long pu = cur[u_arc]++;
+      long long pv = cur[v_arc]++;
 
       arcs[pu].head = &nodes_ptr[v_arc];
       arcs[pu].rev = &arcs[pv];
@@ -137,9 +137,9 @@ pair<vector<char>, double> find_densest_subgraph(const vector<pair<int, int>> &e
     if (src_u_cap_val < 0)
       src_u_cap_val = 0;
 
-    for (int u_new = 0; u_new < n1; ++u_new)
+    for (long long u_new = 0; u_new < n1; ++u_new)
       add_arc(SRC, u_new, src_u_cap_val);
-    for (int j = 0; j < m1; ++j)
+    for (long long j = 0; j < m1; ++j)
     {
       add_arc(edges1[j].first, n1 + j, INF);
       add_arc(edges1[j].second, n1 + j, INF);
@@ -152,12 +152,12 @@ pair<vector<char>, double> find_densest_subgraph(const vector<pair<int, int>> &e
     }
 
     fill(subg.begin(), subg.end(), (char)0);
-    long src_arc_base = (NND > 0 && nodes_ptr[SRC].first) ? (nodes_ptr[SRC].first - arcs.data()) : -1;
+    long long src_arc_base = (NND > 0 && nodes_ptr[SRC].first) ? (nodes_ptr[SRC].first - arcs.data()) : -1;
 
-    int vcount = 0;
+    long long vcount = 0;
     if (src_arc_base != -1)
     {
-      for (int idx = 0; idx < n1; ++idx)
+      for (long long idx = 0; idx < n1; ++idx)
       {
         if (nodes_ptr[idx].d < NND && cap[src_arc_base + idx] > 0)
         {
@@ -167,7 +167,7 @@ pair<vector<char>, double> find_densest_subgraph(const vector<pair<int, int>> &e
       }
     }
 
-    int ecount = 0;
+    long long ecount = 0;
     for (const auto &e : edges)
     {
       if (subg[e.first] && subg[e.second])
