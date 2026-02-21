@@ -15,41 +15,34 @@ def parse_args():
         "--edgelist",
         type=str,
         required=True,
-        help="Path to the edgelist file",
     )
     parser.add_argument(
         "--output-directory",
         type=str,
         required=True,
-        help="Directory to save the output files",
     )
     parser.add_argument(
         "--model",
         type=str,
         choices=["cpm", "mod"],
-        help="Model to use for clustering",
     )
     parser.add_argument(
         "--resolution",
         type=float,
-        help="Resolution parameter for the CPM model (default: None)",
         default=None,
     )
     parser.add_argument(
         "--seed",
         type=int,
-        help="Random seed for reproducibility (default: 1234)",
         default=1234,
     )
     parser.add_argument(
         "--weighted",
         action="store_true",
-        help="Whether the graph is weighted",
     )
     parser.add_argument(
         "--n-iterations",
         type=int,
-        help="Number of iterations for the Leiden algorithm (default: 2)",
         default=2,
     )
     return parser.parse_args()
@@ -64,8 +57,6 @@ seed = args.seed
 n_iterations = args.n_iterations
 is_weighted = args.weighted
 
-# ===========
-
 output_dir.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
@@ -76,16 +67,18 @@ logging.basicConfig(
 )
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
-# ===========
-
 start = time.perf_counter()
 
-g = ig.Graph.Read_Ncol(edgelist_fn, directed=False)
+df = pd.read_csv(edgelist_fn)
+g = ig.Graph.TupleList(
+    df.itertuples(index=False),
+    directed=False,
+    vertex_name_attr="name",
+    weights="weight" if is_weighted else None,
+)
 
 elapsed = time.perf_counter() - start
 logging.info(f"[TIME] Loading network: {elapsed}")
-
-# ===========
 
 start = time.perf_counter()
 
@@ -112,17 +105,28 @@ else:
 elapsed = time.perf_counter() - start
 logging.info(f"[TIME] Running Leiden algorithm: {elapsed}")
 
-# ===========
-
 start = time.perf_counter()
 
 df2 = pd.DataFrame(
     {
-        "node_id": [g.vs[i]["name"] for i in g.vs.indices],
+        "node_id": g.vs["name"],
         "cluster_id": partition.membership,
     }
 )
-df2.to_csv(output_dir / "com.tsv", index=False, sep="\t", header=False)
+
+cluster_counts = df2["cluster_id"].value_counts()
+valid_clusters = cluster_counts[cluster_counts > 1].index
+df_filtered = df2[df2["cluster_id"].isin(valid_clusters)].copy()
+
+unique_ids = sorted(df_filtered["cluster_id"].unique())
+id_map = {old_id: new_id for new_id, old_id in enumerate(unique_ids)}
+df_filtered["cluster_id"] = df_filtered["cluster_id"].map(id_map)
+
+logging.info(f"Removed {len(df2) - len(df_filtered)} singleton nodes.")
+
+df_filtered.to_csv(
+    output_dir / "com.csv", index=False, sep=",", header=["node_id", "cluster_id"]
+)
 
 elapsed = time.perf_counter() - start
 logging.info(f"[TIME] Saving results: {elapsed}")

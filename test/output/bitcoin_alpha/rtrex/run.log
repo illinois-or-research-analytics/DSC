@@ -1,0 +1,12 @@
+2026-02-21 16:10:57,554 - INFO - Reading edgelist from /home/vltanh/Documents/DSC/test/input/bitcoin_alpha.csv...
+2026-02-21 16:10:57,562 - INFO - Writing formatted edgelist to /home/vltanh/Documents/DSC/test/output/bitcoin_alpha/rtrex/temp.edgelist
+2026-02-21 16:10:57,562 - INFO - Graph stats: Vertices=3783, Edges=14124
+2026-02-21 16:10:57,568 - INFO - [TIME] Loading network and formatting: 0.0139s
+2026-02-21 16:10:57,568 - INFO - Switching working directory to: /home/vltanh/Documents/DSC/test/output/bitcoin_alpha/rtrex
+2026-02-21 16:10:57,568 - INFO - Executing command: /home/vltanh/Documents/DSC/bin/RTRex /home/vltanh/Documents/DSC/test/output/bitcoin_alpha/rtrex/temp.edgelist com 0.1 s
+2026-02-21 16:10:57,588 - INFO - [TIME] Running RTRex algorithm: 0.0202s
+2026-02-21 16:10:57,588 - INFO - Processing clustering from RTRex-com-decomposition.txt...
+2026-02-21 16:10:57,589 - INFO - Ignored 3658 singleton clusters.
+2026-02-21 16:10:57,589 - INFO - Found 29 valid communities.
+2026-02-21 16:10:57,591 - INFO - Final clustering saved to /home/vltanh/Documents/DSC/test/output/bitcoin_alpha/rtrex/com.csv
+2026-02-21 16:10:57,591 - INFO - [TIME] Saving results: 0.0030s

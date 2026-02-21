@@ -3,4 +3,7 @@
 	url = git@github.com:MinhyukPark/constrained-clustering.git
 [submodule "ClusterMerger"]
 	path = ClusterMerger
-	url = git@github.com:MinhyukPark/ClusterMerger.git
+	url = git@github.com:illinois-or-research-analytics/ClusterMerger.git
+[submodule "amazon-RTRExtractor"]
+	path = amazon-RTRExtractor
+	url = git@github.com:amazon-science/amazon-RTRExtractor.git

@@ -15,107 +15,216 @@ extern "C"
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
+#include <queue> // Added for BFS
 #include "pushrelabel.h"
 
 using namespace std;
+
+// --- TYPE DEFINITIONS FOR LARGE NETWORKS ---
+using NodeID = long long;
+using EdgeID = long long;
+
 const int INF = (int)1e9;
 
-inline char get_delimiter(string filepath) {
+// --- HELPER: Find connected components within a specific subset of nodes ---
+// This ensures that nodes with the same density value are only clustered together
+// if they are actually connected in the graph.
+vector<vector<NodeID>> get_components_in_subset(
+    NodeID n_total,
+    const vector<pair<NodeID, NodeID>> &all_edges,
+    const vector<NodeID> &subset_nodes)
+{
+    // 1. Create a fast lookup for the subset
+    // Mapping global NodeID -> Local Index (0..subset_size-1)
+    map<NodeID, int> global_to_local;
+    for (size_t i = 0; i < subset_nodes.size(); ++i)
+    {
+        global_to_local[subset_nodes[i]] = i;
+    }
+
+    // 2. Build Adjacency for the subset
+    int subset_size = subset_nodes.size();
+    vector<vector<int>> adj(subset_size);
+
+    for (const auto &edge : all_edges)
+    {
+        auto it1 = global_to_local.find(edge.first);
+        auto it2 = global_to_local.find(edge.second);
+
+        // If both endpoints are in this density group
+        if (it1 != global_to_local.end() && it2 != global_to_local.end())
+        {
+            adj[it1->second].push_back(it2->second);
+            adj[it2->second].push_back(it1->second);
+        }
+    }
+
+    // 3. BFS to find components
+    vector<bool> visited(subset_size, false);
+    vector<vector<NodeID>> components;
+
+    for (int i = 0; i < subset_size; ++i)
+    {
+        if (!visited[i])
+        {
+            vector<NodeID> component;
+            queue<int> q;
+
+            visited[i] = true;
+            q.push(i);
+            component.push_back(subset_nodes[i]); // Store Global ID
+
+            while (!q.empty())
+            {
+                int u_local = q.front();
+                q.pop();
+
+                for (int v_local : adj[u_local])
+                {
+                    if (!visited[v_local])
+                    {
+                        visited[v_local] = true;
+                        q.push(v_local);
+                        component.push_back(subset_nodes[v_local]); // Store Global ID
+                    }
+                }
+            }
+            components.push_back(component);
+        }
+    }
+    return components;
+}
+
+inline char get_delimiter(string filepath)
+{
     ifstream edgelist(filepath);
     string line;
-    getline(edgelist, line);
-    if (line.find(',') != string::npos) {
+    if (!getline(edgelist, line))
+        throw runtime_error("Empty edgelist file.");
+    if (line.find(',') != string::npos)
         return ',';
-    } else if (line.find('\t') != string::npos) {
+    else if (line.find('\t') != string::npos)
         return '\t';
-    } else if (line.find(' ') != string::npos) {
+    else if (line.find(' ') != string::npos)
         return ' ';
-    }
     throw invalid_argument("Could not detect filetype for " + filepath);
 }
 
-inline map<int, string> reverse_node_mapping(map<string, int> original_to_integer_map) {
-    map<int, string> integer_to_original_map;
-    for(auto const& [original_node_id, integer_node_id] : original_to_integer_map) {
+inline map<NodeID, string> reverse_node_mapping(map<string, NodeID> original_to_integer_map)
+{
+    map<NodeID, string> integer_to_original_map;
+    for (auto const &[original_node_id, integer_node_id] : original_to_integer_map)
+    {
         integer_to_original_map[integer_node_id] = original_node_id;
     }
     return integer_to_original_map;
 }
 
-inline map<string, int> get_node_mapping(string filepath, char delimiter) {
-    map<string, int> original_to_integer_map;
+inline map<string, NodeID> get_node_mapping(string filepath, char delimiter)
+{
+    map<string, NodeID> original_to_integer_map;
     ifstream edgelist(filepath);
     string line;
-    int current_new_node_id = 0;
-    while(getline(edgelist, line)) {
+    if (!getline(edgelist, line))
+        throw runtime_error("Empty edgelist file.");
+    NodeID current_new_node_id = 0;
+    while (getline(edgelist, line))
+    {
+        if (line.empty())
+            continue;
         stringstream ss(line);
         string current_original_node_id;
-        while(getline(ss, current_original_node_id, delimiter)) {
-            if (original_to_integer_map.find(current_original_node_id) == original_to_integer_map.end()) {
+        while (getline(ss, current_original_node_id, delimiter))
+        {
+            if (original_to_integer_map.find(current_original_node_id) == original_to_integer_map.end())
+            {
                 original_to_integer_map[current_original_node_id] = current_new_node_id;
-                current_new_node_id ++;
+                current_new_node_id++;
             }
         }
     }
     return original_to_integer_map;
 }
 
-inline vector<pair<int, int>> read_network_edgelist(string filepath, char delimiter, map<string, int> original_to_integer_map) {
-    vector<pair<int, int>> vector_edgelist;
+inline vector<pair<NodeID, NodeID>> read_network_edgelist(
+    string filepath,
+    char delimiter,
+    const map<string, NodeID> &original_to_integer_map)
+{
+    vector<pair<NodeID, NodeID>> vector_edgelist;
     ifstream edgelist(filepath);
     string line;
-    while(getline(edgelist, line)) {
+
+    if (!getline(edgelist, line))
+        throw runtime_error("Empty edgelist file: " + filepath);
+
+    while (getline(edgelist, line))
+    {
+        if (line.empty())
+            continue;
+
         stringstream ss(line);
         string current_node;
         vector<string> current_nodes;
-        while(getline(ss, current_node, delimiter)) {
+
+        while (getline(ss, current_node, delimiter))
+        {
             current_nodes.push_back(current_node);
         }
-        vector_edgelist.push_back({original_to_integer_map[current_nodes[0]], original_to_integer_map[current_nodes[1]]});
+
+        if (current_nodes.size() >= 2)
+        {
+            vector_edgelist.push_back({original_to_integer_map.at(current_nodes[0]),
+                                       original_to_integer_map.at(current_nodes[1])});
+        }
     }
     return vector_edgelist;
 }
 
-inline char GET_CHAR()
+// --- OUTPUT FUNCTION FOR DENSITY ---
+void write_density_values(
+    string filepath,
+    NodeID num_nodes,
+    map<NodeID, string> &integer_to_original_map,
+    vector<double> &density_values)
 {
-    const int BUFSIZE = 1 << 17;
-    static char buf[BUFSIZE], *p = buf, *q = buf;
-    if (p == q)
+    ofstream ostream(filepath);
+    ostream << "node_id,value\n"; // Write Header
+    for (NodeID i = 0; i < num_nodes; i++)
     {
-        q = buf + fread(buf, 1, BUFSIZE, stdin);
-        p = buf;
-        if (p == q)
-            return EOF;
+        ostream << integer_to_original_map[i] << ',' << density_values[i] << '\n';
     }
-    return *p++;
 }
 
-inline int getInt()
+// --- OUTPUT FUNCTION FOR CLUSTERS ---
+void write_cluster_assignments(
+    string filepath,
+    NodeID num_nodes,
+    map<NodeID, string> &integer_to_original_map,
+    vector<long long> &cluster_assignments)
 {
-    int x = 0;
-    char c = GET_CHAR();
-
-    while ((c < '0' || c > '9') && c != EOF)
+    ofstream ostream(filepath);
+    ostream << "node_id,cluster_id\n"; // Write Header
+    for (NodeID i = 0; i < num_nodes; i++)
     {
-        c = GET_CHAR();
-    }
+        // Skip noise/singleton clusters (marked as -1)
+        if (cluster_assignments[i] == -1)
+            continue;
 
-    if (c == EOF)
-        return 0;
-
-    while (c >= '0' && c <= '9')
-    {
-        x = x * 10 + (c - '0');
-        c = GET_CHAR();
+        ostream << integer_to_original_map[i] << ',' << cluster_assignments[i] << '\n';
     }
-    return x;
 }
 
 extern "C" int run_pushrelabel(int argc, char **argv)
 {
+    // Disable synchronization with C-style I/O
+    ios_base::sync_with_stdio(0);
+    cin.tie(0);
+
     if (argc < 5)
     {
-        cerr << "Usage: " << argv[0] << " <ACCURACY> [maxIter]" << endl;
+        cerr << "Usage: " << argv[0] << " <ACCURACY> [maxIter] <graph_path> <output_path> <density_path>" << endl;
         return 1;
     }
     int ACCURACY = atoi(argv[1]);
@@ -125,60 +234,46 @@ extern "C" int run_pushrelabel(int argc, char **argv)
         ACCURACY = 100000;
     }
 
-    std::string graph_path = std::string(argv[2]);
-    const char *output_path = argv[3];
-    const char *density_path = argv[4];
-    std::ofstream output_out(output_path);
-    std::ofstream density_out(density_path);
+    // Adjust indices for arguments
+    int maxIter = 100;
+    if (argc > 2)
+        maxIter = atoi(argv[2]);
+    if (maxIter <= 0)
+        maxIter = 100;
+
+    std::string graph_path = std::string(argv[3]);
+    const char *output_path = argv[4];
+    const char *density_path = argv[5];
 
     char delimiter = get_delimiter(graph_path);
-    map<string, int> original_to_integer_map = get_node_mapping(graph_path, delimiter);
-    map<int, string> integer_to_original_map = reverse_node_mapping(original_to_integer_map);
-    vector<pair<int, int>> edges = read_network_edgelist(graph_path, delimiter, original_to_integer_map);
-    long long n = original_to_integer_map.size();
-    long long m = edges.size();
+    map<string, NodeID> original_to_integer_map = get_node_mapping(graph_path, delimiter);
+    map<NodeID, string> integer_to_original_map = reverse_node_mapping(original_to_integer_map);
+    vector<pair<NodeID, NodeID>> edges = read_network_edgelist(graph_path, delimiter, original_to_integer_map);
 
-    /* int n = getInt(), m = getInt(); */
-    vector<double> max_density(n, 1.0 * m / n); // Initialize with initial density
+    NodeID n = original_to_integer_map.size();
+    EdgeID m = edges.size();
+
+    // Initialize with initial density
+    vector<double> max_density(n, (n > 0 ? 1.0 * m / n : 0.0));
+
     if (n <= 0 && m > 0)
     {
         cerr << "Error: n <= 0 but m > 0. (n=" << n << ", m=" << m << ")" << endl;
         return 1;
     }
-    if (n < 0 || m < 0)
-    {
-        cerr << "Error reading n or m." << endl;
-        return 1;
-    }
 
-    /* vector<pair<int, int>> edges(m); */
-    /* for (int i = 0; i < m; ++i) */
-    /* { */
-    /*     int u = getInt(), v = getInt(); */
-    /*     if (u < 0 || u >= n || v < 0 || v >= n) */
-    /*     { */
-    /*         cerr << "Error reading edge " << i << " or invalid vertex index (" << u << "," << v << " for n=" << n << ")." << endl; */
-    /*         return 1; */
-    /*     } */
-    /*     edges[i] = {u, v}; */
-    /* } */
-
-    // OPTIMIZATION: Use vector<char> for subg instead of vector<bool>
     vector<char> subg(n, 1); // 1 for true, 0 for false
 
-    double density = 1.0*m/n; // O(1)
-    std::cout << "inital density  = " << density << std::endl;
+    double density = (n > 0) ? (1.0 * m / n) : 0.0;
+    std::cout << "Initial density = " << density << std::endl;
 
     double prev_density = -1.0;
-    int maxIter = (argc > 2 ? atoi(argv[2]) : 100);
-    if (maxIter <= 0)
-        maxIter = 100;
 
-    int max_flow_nodes_alloc = n + m + 2;
-    long max_flow_arcs_alloc = 2L * n + 6L * m + 100;
+    long long max_flow_nodes_alloc = n + m + 2;
+    long long max_flow_arcs_alloc = 2LL * n + 6LL * m + 100;
 
-    vector<long> deg(max_flow_nodes_alloc);
-    vector<long> cur(max_flow_nodes_alloc);
+    vector<long long> deg(max_flow_nodes_alloc);
+    vector<long long> cur(max_flow_nodes_alloc);
     vector<node> nodes(max_flow_nodes_alloc + 1);
     vector<arc> arcs(max_flow_arcs_alloc);
     vector<cType> cap(max_flow_arcs_alloc);
@@ -186,134 +281,75 @@ extern "C" int run_pushrelabel(int argc, char **argv)
     node *nodes_ptr = nodes.data();
     ::sentinelNode = nodes_ptr + max_flow_nodes_alloc;
 
-    // new2old and edges1 are still pre-reserved and cleared.
-    vector<int> new2old;
+    vector<NodeID> new2old;
     new2old.reserve(n);
-    vector<pair<int, int>> edges1;
+    vector<pair<NodeID, NodeID>> edges1;
     edges1.reserve(m);
 
     for (int iter = 0; iter < maxIter; ++iter)
     {
         prev_density = density;
 
-        // OPTIMIZATION: Revert old2new to per-iteration allocation as in original
-        vector<int> old2new(n, -1); // If n=0, this is fine (empty vector)
-
+        vector<NodeID> old2new(n, -1);
         new2old.clear();
 
-        int n1 = 0;
-        for (int u = 0; u < n; ++u)
-        {
-            if (subg[u])
-            { // subg[u] is 1 if true
-                if (n > 0)
-                    old2new[u] = n1; // Check n>0 only if really needed; if subg.size() is n, old2new.size() is also n.
-                n1++;                // n1 is count, old2new index is n1-1
-                new2old.push_back(u);
-            }
-        }
-        // Correct indexing for old2new[u]
-        n1 = 0;
-        new2old.clear(); // Clear again, as n1 calculation was separate above
-        for (int u = 0; u < n; ++u)
+        NodeID n1 = 0;
+        for (NodeID u = 0; u < n; ++u)
         {
             if (subg[u])
             {
-                old2new[u] = n1; // n1 starts at 0, so it's the correct new index
+                old2new[u] = n1;
                 n1++;
                 new2old.push_back(u);
             }
         }
 
-        if (n1 == 0 && n > 0)
-        { // if n=0, n1 will be 0. If n>0 and n1=0, means empty subgraph.
+        if (n1 == 0)
+        {
             density = 0.0;
-            if (abs(density - prev_density) < 1e-12 && prev_density != -1.0)
-            {
-                // Log and break same as below
-                cerr << "Iter " << iter << ": dens=" << density << " (V=" << 0 << " E=" << 0 << ")\n";
+            if (abs(density - prev_density) < 1e-12)
                 break;
-            }
         }
 
         edges1.clear();
         for (const auto &e : edges)
         {
-            int u_new = (n > 0 && e.first < n) ? old2new[e.first] : -1;   // defensive access
-            int v_new = (n > 0 && e.second < n) ? old2new[e.second] : -1; // defensive access
+            NodeID u_new = (n > 0 && e.first < n) ? old2new[e.first] : -1;
+            NodeID v_new = (n > 0 && e.second < n) ? old2new[e.second] : -1;
             if (u_new != -1 && v_new != -1)
             {
                 edges1.emplace_back(u_new, v_new);
             }
         }
 
-        int m1 = edges1.size();
-        int SRC = n1 + m1, SNK = SRC + 1, NND = SNK + 1;
+        EdgeID m1 = edges1.size();
+        NodeID SRC = n1 + m1, SNK = SRC + 1, NND = SNK + 1;
 
         if (NND > max_flow_nodes_alloc)
         {
             cerr << "Error: NND " << NND << " exceeds allocation " << max_flow_nodes_alloc << endl;
             return 1;
         }
-        // Ensure deg is filled only up to NND
+
         fill(deg.begin(), deg.begin() + NND, 0L);
-        if (NND > 0)
-        { // Only assign if NND is valid
-            if (SRC < NND)
-                deg[SRC] = n1;
-            if (SNK < NND)
-                deg[SNK] = m1;
-        }
 
-        for (int i = 0; i < n1; ++i)
-        {
-            if (i < NND)
-                deg[i] += 1; // Original was deg[i]=1, if NND is small, +=1 could be an issue if not init to 0.
-                             // With fill above, it's fine.
-        }
+        // Calculate degrees
+        for (NodeID i = 0; i < n1; ++i)
+            deg[i] = 1; // Nodes to Sink
         for (const auto &e1 : edges1)
         {
-            if (e1.first < NND)
-                deg[e1.first]++;
-            if (e1.second < NND)
-                deg[e1.second]++;
+            deg[e1.first]++;
+            deg[e1.second]++;
         }
-        for (int j = 0; j < m1; ++j)
-        {
-            if ((n1 + j) < NND)
-                deg[n1 + j] += 3; // Original was deg[n1+j]=3
-        }
-        // To be absolutely safe and match original logic for deg array assignments
-        // (assuming deg was filled with 0s up to NND before this):
-        // Re-do the deg assignment exactly as original:
-        if (NND > 0)
-        {
-            if (SRC < NND)
-                deg[SRC] = n1;
-            else if (SRC == 0 && n1 == 0)
-                deg[SRC] = 0; // handle NND=1, SRC=0 case etc.
-            if (SNK < NND)
-                deg[SNK] = m1;
-            else if (SNK == 0 && m1 == 0)
-                deg[SNK] = 0;
-        }
-        for (int i = 0; i < n1; ++i)
-        { // These are vertex nodes 0..n1-1
-            deg[i] = 1;
-        }
-        for (const auto &e1 : edges1)
-        {
-            deg[e1.first]++;  // e1.first is a new vertex index < n1
-            deg[e1.second]++; // e1.second is a new vertex index < n1
-        }
-        for (int j = 0; j < m1; ++j)
-        { // These are edge nodes n1..n1+m1-1
-            deg[n1 + j] = 3;
-        }
+        for (EdgeID j = 0; j < m1; ++j)
+            deg[n1 + j] = 3; // Source to Edge, Edge to u, Edge to v
+        deg[SRC] = n1;
+        deg[SNK] = m1;
 
-        for (int i = 1; i < NND; ++i)
+        // Prefix sum for current pointers
+        for (NodeID i = 1; i < NND; ++i)
             deg[i] += deg[i - 1];
-        long tot_structural_arcs = (NND > 0) ? deg[NND - 1] : 0;
+        long long tot_structural_arcs = (NND > 0) ? deg[NND - 1] : 0;
 
         if (tot_structural_arcs > max_flow_arcs_alloc)
         {
@@ -323,16 +359,15 @@ extern "C" int run_pushrelabel(int argc, char **argv)
 
         if (NND > 0)
             cur[0] = 0;
-        for (int i = 1; i < NND; ++i)
+        for (NodeID i = 1; i < NND; ++i)
             cur[i] = deg[i - 1];
-
-        for (int i = 0; i < NND; ++i)
+        for (NodeID i = 0; i < NND; ++i)
             nodes_ptr[i].first = arcs.data() + cur[i];
 
-        auto add_arc = [&](int u_arc, int v_arc, cType capacity_val)
+        auto add_arc = [&](NodeID u_arc, NodeID v_arc, cType capacity_val)
         {
-            long pu = cur[u_arc]++;
-            long pv = cur[v_arc]++;
+            long long pu = cur[u_arc]++;
+            long long pv = cur[v_arc]++;
 
             arcs[pu].head = &nodes_ptr[v_arc];
             arcs[pu].rev = &arcs[pv];
@@ -347,17 +382,16 @@ extern "C" int run_pushrelabel(int argc, char **argv)
         if (src_u_cap_val < 0)
             src_u_cap_val = 0;
 
-        for (int u_new = 0; u_new < n1; ++u_new)
+        for (NodeID u_new = 0; u_new < n1; ++u_new)
             add_arc(SRC, u_new, src_u_cap_val);
 
-        for (int j = 0; j < m1; ++j)
+        for (EdgeID j = 0; j < m1; ++j)
         {
             const auto &e1 = edges1[j];
             add_arc(e1.first, n1 + j, INF);
             add_arc(e1.second, n1 + j, INF);
-        }
-        for (int j = 0; j < m1; ++j)
             add_arc(n1 + j, SNK, static_cast<cType>(ACCURACY));
+        }
 
         if (NND > 0 && tot_structural_arcs > 0 && SRC < NND && SNK < NND && SRC != SNK)
         {
@@ -365,37 +399,36 @@ extern "C" int run_pushrelabel(int argc, char **argv)
                     &nodes_ptr[SRC], &nodes_ptr[SNK], 0);
         }
 
-        if (n > 0)
-            fill(subg.begin(), subg.end(), (char)0); // Fill with char 0
-        long src_arc_base_offset = (NND > 0 && SRC < NND && nodes_ptr[SRC].first != nullptr) ? (nodes_ptr[SRC].first - arcs.data()) : -1;
+        fill(subg.begin(), subg.end(), (char)0);
+        long long src_arc_base_offset = (NND > 0 && SRC < NND && nodes_ptr[SRC].first != nullptr) ? (nodes_ptr[SRC].first - arcs.data()) : -1;
 
-        int vcount = 0;
+        long long vcount = 0;
         if (src_arc_base_offset != -1)
         {
-            for (int idx = 0; idx < n1; ++idx)
+            for (NodeID idx = 0; idx < n1; ++idx)
             {
-                // Check node_ptr[idx].d is initialized by min_cut if NND is small.
-                // min_cut should initialize d for all NND nodes.
+                // Nodes on source side of cut
                 if (nodes_ptr[idx].d < NND && cap[src_arc_base_offset + idx] > 0)
                 {
-                    if (n > 0)
-                        subg[new2old[idx]] = 1; // 1 for true
+                    subg[new2old[idx]] = 1;
                     vcount++;
                 }
             }
         }
 
-        int ecount = 0;
+        long long ecount = 0;
         for (const auto &edge_pair_new_indices : edges1)
         {
-            if (n > 0 && subg[new2old[edge_pair_new_indices.first]] && subg[new2old[edge_pair_new_indices.second]])
+            if (subg[new2old[edge_pair_new_indices.first]] && subg[new2old[edge_pair_new_indices.second]])
             {
                 ecount++;
             }
         }
 
         density = (vcount > 0) ? (static_cast<double>(ecount) / vcount) : 0.0;
-        for (int u = 0; u < n; ++u)
+
+        // Update max density seen for these nodes
+        for (NodeID u = 0; u < n; ++u)
         {
             if (subg[u])
             {
@@ -407,32 +440,56 @@ extern "C" int run_pushrelabel(int argc, char **argv)
 
         if (prev_density >= 0.0 && abs(density - prev_density) < 1e-12)
             break;
-        // Special case: if n=0, density is 0. if prev_density was also 0 (or -1 initially), break.
-        if (n == 0 && density == 0.0 && (prev_density == 0.0 || prev_density == -1.0))
-            break;
     }
 
-    vector<pair<double, int>> nodes_by_density;
-    map<double, int> clustering_map;
-    int new_cluster_id = 0;
-    for (int u = 0; u < n; ++u)
-    {
-        nodes_by_density.emplace_back(max_density[u], u);
-    }
-    sort(nodes_by_density.begin(), nodes_by_density.end());
+    // --- POST PROCESSING: Group by Density + Connected Components ---
 
-    for (const auto &entry : nodes_by_density)
+    vector<long long> cluster_assignments(n, -1); // Initialize all to -1 (noise)
+
+    // 1. Group nodes by their max_density
+    map<double, vector<NodeID>> density_groups;
+    for (NodeID u = 0; u < n; ++u)
     {
-        density_out << integer_to_original_map[entry.second] << " " << entry.first << "\n";
-        if(clustering_map.count(entry.first) == 0) {
-            clustering_map[entry.first] = new_cluster_id;
-            new_cluster_id ++;
+        if (max_density[u] > 0)
+        { // Only consider positive density
+            density_groups[max_density[u]].push_back(u);
         }
-        output_out << integer_to_original_map[entry.second] << " " << clustering_map[entry.first] << "\n";
     }
-    density_out.close();
-    output_out.close();
 
+    long long final_cluster_id = 0;
+    long long total_clustered_nodes = 0;
+
+    // 2. For each density group, split into connected components
+    // Iterate in reverse order (highest density first)
+    for (auto it = density_groups.rbegin(); it != density_groups.rend(); ++it)
+    {
+        const vector<NodeID> &nodes_in_group = it->second;
+
+        // Separate this density tier into connected components
+        vector<vector<NodeID>> components = get_components_in_subset(n, edges, nodes_in_group);
+
+        for (const auto &comp : components)
+        {
+            // Remove singleton clusters (size == 1)
+            if (comp.size() > 1)
+            {
+                for (NodeID u : comp)
+                {
+                    cluster_assignments[u] = final_cluster_id;
+                }
+                final_cluster_id++;
+                total_clustered_nodes += comp.size();
+            }
+        }
+    }
+
+    cout << "Final: " << final_cluster_id << " clusters processed (" << total_clustered_nodes << " nodes)." << endl;
+
+    // 3. Write Cluster Assignments
+    write_cluster_assignments(output_path, n, integer_to_original_map, cluster_assignments);
+
+    // 4. Write Density Values
+    write_density_values(density_path, n, integer_to_original_map, max_density);
 
     return 0;
 }

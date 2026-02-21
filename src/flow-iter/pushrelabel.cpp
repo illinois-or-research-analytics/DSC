@@ -16,14 +16,74 @@ extern "C"
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <queue> // Added for BFS
 #include "pushrelabel.h"
 
 using namespace std;
+
+// --- TYPE DEFINITIONS FOR LARGE NETWORKS ---
+using NodeID = long long;
+using EdgeID = long long;
+
 const int INF = (int)1e9;
 
-pair<vector<char>, double> find_densest_subgraph(const vector<pair<int, int>> &edges,
-                                                 long long n,
-                                                 long long m,
+// --- HELPER: Find connected components within the extracted densest subset ---
+vector<vector<NodeID>> get_components_in_subgraph(
+    NodeID n,
+    const vector<pair<NodeID, NodeID>> &edges,
+    const vector<char> &subset_mask)
+{
+  // Build adjacency list restricted to the subset nodes
+  // Note: We only build this temporarily for the component search
+  vector<vector<NodeID>> adj(n);
+  for (const auto &e : edges)
+  {
+    if (subset_mask[e.first] && subset_mask[e.second])
+    {
+      adj[e.first].push_back(e.second);
+      adj[e.second].push_back(e.first);
+    }
+  }
+
+  vector<bool> visited(n, false);
+  vector<vector<NodeID>> components;
+
+  for (NodeID i = 0; i < n; ++i)
+  {
+    // Only process nodes that are part of the densest subset
+    if (subset_mask[i] && !visited[i])
+    {
+      vector<NodeID> component;
+      queue<NodeID> q;
+
+      visited[i] = true;
+      q.push(i);
+      component.push_back(i);
+
+      while (!q.empty())
+      {
+        NodeID u = q.front();
+        q.pop();
+
+        for (NodeID v : adj[u])
+        {
+          if (!visited[v])
+          {
+            visited[v] = true;
+            q.push(v);
+            component.push_back(v);
+          }
+        }
+      }
+      components.push_back(component);
+    }
+  }
+  return components;
+}
+
+pair<vector<char>, double> find_densest_subgraph(const vector<pair<NodeID, NodeID>> &edges,
+                                                 NodeID n,
+                                                 EdgeID m,
                                                  int max_iter,
                                                  int accuracy)
 {
@@ -184,133 +244,123 @@ pair<vector<char>, double> find_densest_subgraph(const vector<pair<int, int>> &e
   return {subg, density};
 }
 
-char get_delimiter(string filepath)
+inline char get_delimiter(string filepath)
 {
-  /*
-  Function to detect the delimiter used in the edgelist file.
-  Arguments:
-  - filepath: The path to the edgelist file.
-  Returns:
-  - The character used as a delimiter in the edgelist file.
-  */
-  // Open the edgelist file
   ifstream edgelist(filepath);
-  // Placeholder for the first line
   string line;
-  // Read the first line of the edgelist file
-  getline(edgelist, line);
-  // Check for common delimiters (comma, tab, space) in the line
-  // and return the appropriate delimiter character
+  if (!getline(edgelist, line))
+    throw runtime_error("Empty edgelist file.");
   if (line.find(',') != string::npos)
-  {
     return ',';
-  }
   else if (line.find('\t') != string::npos)
-  {
     return '\t';
-  }
   else if (line.find(' ') != string::npos)
-  {
     return ' ';
-  }
-  // If no known delimiter is found, throw an error
   throw invalid_argument("Could not detect filetype for " + filepath);
 }
 
-map<string, int> get_node_mapping(string filepath, char delimiter)
+inline map<string, NodeID> get_node_mapping(string filepath, char delimiter)
 {
-  /*
-  Function to create a mapping from original node IDs (as strings) to integer IDs.
-  Arguments:
-  - filepath: The path to the edgelist file containing the network data.
-  - delimiter: The character used to separate node IDs in the edgelist file.
-  Returns:
-  - A map where keys are original node IDs (as strings) and values are integer IDs.
-  */
-  // Create a mapping from original node IDs (as strings) to integer IDs
-  map<string, int> original_to_integer_map;
-  // Open the edgelist file
+  map<string, NodeID> original_to_integer_map;
   ifstream edgelist(filepath);
-  // Create a placeholder for each line in the edgelist
   string line;
-  // Initialize a counter for new node IDs
-  int current_new_node_id = 0;
-  // Iterate through each line in the edgelist
+  if (!getline(edgelist, line))
+    throw runtime_error("Empty edgelist file.");
+  NodeID current_new_node_id = 0;
   while (getline(edgelist, line))
   {
-    // Create a stringstream to split the line by the delimiter
+    if (line.empty())
+      continue;
     stringstream ss(line);
-    // Create a placeholder for the original node ID currently being processed
     string current_original_node_id;
-    // Iterate through each node ID in the line (split by the delimiter)
     while (getline(ss, current_original_node_id, delimiter))
     {
-      // Check if the current original node ID is already in the map
       if (original_to_integer_map.find(current_original_node_id) == original_to_integer_map.end())
       {
-        // If not, add it to the map with the current new node ID
         original_to_integer_map[current_original_node_id] = current_new_node_id;
-        // Increment the new node ID counter for the next unique node
         current_new_node_id++;
       }
     }
   }
-  // Return the mapping from original node IDs to integer IDs
   return original_to_integer_map;
 }
 
-inline vector<pair<int, int>> read_network_edgelist(string filepath, char delimiter, const map<string, int> &original_to_integer_map)
+inline vector<pair<NodeID, NodeID>> read_network_edgelist(
+    string filepath,
+    char delimiter,
+    const map<string, NodeID> &original_to_integer_map)
 {
-  vector<pair<int, int>> vector_edgelist;
+  vector<pair<NodeID, NodeID>> vector_edgelist;
   ifstream edgelist(filepath);
   string line;
+
+  if (!getline(edgelist, line))
+    throw runtime_error("Empty edgelist file: " + filepath);
+
   while (getline(edgelist, line))
   {
+    if (line.empty())
+      continue;
+
     stringstream ss(line);
-    string u_node_str, v_node_str;
-    getline(ss, u_node_str, delimiter);
-    getline(ss, v_node_str, delimiter);
-    if (!u_node_str.empty() && !v_node_str.empty())
+    string current_node;
+    vector<string> current_nodes;
+
+    while (getline(ss, current_node, delimiter))
     {
-      vector_edgelist.push_back({original_to_integer_map.at(u_node_str), original_to_integer_map.at(v_node_str)});
+      current_nodes.push_back(current_node);
+    }
+
+    if (current_nodes.size() >= 2)
+    {
+      vector_edgelist.push_back({original_to_integer_map.at(current_nodes[0]),
+                                 original_to_integer_map.at(current_nodes[1])});
     }
   }
   return vector_edgelist;
 }
 
-map<int, string> reverse_node_mapping(map<string, int> original_to_integer_map)
+inline map<NodeID, string> reverse_node_mapping(map<string, NodeID> original_to_integer_map)
 {
-  /*
-  Function to create a mapping from original node IDs (as strings) to integer IDs.
-  Arguments:
-  - original_to_integer_map: A map where keys are original node IDs (as strings) and values are integer IDs.
-  Returns:
-  - A map where keys are integer IDs and values are original node IDs (as strings).
-  */
-  // Create a mapping from integer IDs back to original node IDs
-  map<int, string> integer_to_original_map;
-  // Iterate through the original to integer mapping
+  map<NodeID, string> integer_to_original_map;
   for (auto const &[original_node_id, integer_node_id] : original_to_integer_map)
   {
-    // For each original node ID, map the integer ID back to the original node ID
     integer_to_original_map[integer_node_id] = original_node_id;
   }
-  // Return the mapping from integer IDs to original node IDs
   return integer_to_original_map;
 }
 
-template <typename T>
-void write_vprop_vector(
-    string &prop_vec,
-    long long num_nodes,
-    map<int, string> &integer_to_original_map,
-    vector<T> &b,
-    char delimiter = '\t')
+// --- OUTPUT FUNCTION FOR DENSITY ---
+void write_density_values(
+    string filepath,
+    NodeID num_nodes,
+    map<NodeID, string> &integer_to_original_map,
+    vector<double> &density_values)
 {
-  ofstream ostream(prop_vec);
-  for (int i = 0; i < num_nodes; i++)
+  ofstream ostream(filepath);
+  ostream << "node_id,value\n"; // Write Header
+  for (NodeID i = 0; i < num_nodes; i++)
   {
-    ostream << integer_to_original_map[i] << delimiter << b[i] << '\n';
+    ostream << integer_to_original_map[i] << ',' << density_values[i] << '\n';
+  }
+}
+
+// --- OUTPUT FUNCTION FOR CLUSTERS ---
+void write_cluster_assignments(
+    string filepath,
+    NodeID num_nodes,
+    map<NodeID, string> &integer_to_original_map,
+    vector<long long> &cluster_assignments)
+{
+  ofstream ostream(filepath);
+  ostream << "node_id,cluster_id\n"; // Write Header
+  for (NodeID i = 0; i < num_nodes; i++)
+  {
+    // Skip noise/singleton clusters (marked as -1)
+    if (cluster_assignments[i] == -1)
+      continue;
+
+    ostream << integer_to_original_map[i] << ',' << cluster_assignments[i] << '\n';
   }
 }
 
@@ -323,45 +373,39 @@ extern "C" int run_pushrelabel(int argc, char **argv)
 
   auto start_total = chrono::high_resolution_clock::now();
 
-  if (argc < 6)
+  if (argc < 7)
   {
-    cerr << "Usage: " << argv[0] << " <ACCURACY> <maxIter> <graph_path> <output_path> <density_path>" << endl;
+    cerr << "Usage: " << argv[0] << " <ACCURACY> <maxIter> <graph_path> <output_path> <density_path> <density_threshold>" << endl;
     return 1;
   }
 
-  // Get the accuracy parameter
   int accuracy = atoi(argv[1]);
-  // Get the number of iterations
   int max_iter = atoi(argv[2]);
-  // Get the file path to the input network edgelist
   string network_filepath = argv[3];
-  // Get the file path for outputting the clustering results
   string output_filepath = argv[4];
-  // Get the file path for outputting the density results
   string density_filepath = argv[5];
+  double density_threshold = stod(argv[6]);
 
-  // Process the input network edgelist
-  // Determine the delimiter used in the edgelist file (comma, tab, or space)
   char delimiter = get_delimiter(network_filepath);
-  // Read the network edgelist and create mappings from original node IDs to integer IDs
-  map<string, int> original_to_integer_map = get_node_mapping(network_filepath, delimiter);
-  // Reverse the mapping to get integer IDs back to original node IDs
-  map<int, string> integer_to_original_map = reverse_node_mapping(original_to_integer_map);
+  map<string, NodeID> original_to_integer_map = get_node_mapping(network_filepath, delimiter);
+  map<NodeID, string> integer_to_original_map = reverse_node_mapping(original_to_integer_map);
 
-  vector<pair<int, int>> all_edges = read_network_edgelist(network_filepath, delimiter, original_to_integer_map);
+  vector<pair<NodeID, NodeID>> all_edges = read_network_edgelist(network_filepath, delimiter, original_to_integer_map);
 
-  long long n_total = original_to_integer_map.size();
+  NodeID n_total = original_to_integer_map.size();
   vector<bool> remaining_nodes(n_total, true);
   long long remaining_node_count = n_total;
 
-  vector<long long> cluster_assignments(n_total, 0);
+  vector<long long> cluster_assignments(n_total, -1);
   vector<double> final_densities(n_total, 0.0);
   long long cluster_id_counter = 0;
 
   while (remaining_node_count > 0)
   {
-    vector<int> isolated_nodes;
-    map<int, vector<int>> adj_list;
+    vector<NodeID> isolated_nodes;
+    map<NodeID, vector<NodeID>> adj_list;
+
+    // Build temp adjacency list for finding isolated nodes
     for (const auto &edge : all_edges)
     {
       if (remaining_nodes[edge.first] && remaining_nodes[edge.second])
@@ -370,7 +414,8 @@ extern "C" int run_pushrelabel(int argc, char **argv)
         adj_list[edge.second].push_back(edge.first);
       }
     }
-    for (int i = 0; i < n_total; ++i)
+
+    for (NodeID i = 0; i < n_total; ++i)
     {
       if (remaining_nodes[i] && adj_list.find(i) == adj_list.end())
       {
@@ -381,7 +426,7 @@ extern "C" int run_pushrelabel(int argc, char **argv)
     if (!isolated_nodes.empty())
     {
       cout << "Found and removing " << isolated_nodes.size() << " isolated vertices." << endl;
-      for (int node_idx : isolated_nodes)
+      for (NodeID node_idx : isolated_nodes)
       {
         if (remaining_nodes[node_idx])
         {
@@ -396,10 +441,11 @@ extern "C" int run_pushrelabel(int argc, char **argv)
     if (remaining_node_count == 0)
       break;
 
-    map<int, int> original_to_subgraph_map;
-    vector<int> subgraph_to_original_map;
-    int current_subgraph_idx = 0;
-    for (int i = 0; i < n_total; ++i)
+    map<NodeID, NodeID> original_to_subgraph_map;
+    vector<NodeID> subgraph_to_original_map;
+    NodeID current_subgraph_idx = 0;
+
+    for (NodeID i = 0; i < n_total; ++i)
     {
       if (remaining_nodes[i])
       {
@@ -409,7 +455,7 @@ extern "C" int run_pushrelabel(int argc, char **argv)
       }
     }
 
-    vector<pair<int, int>> subgraph_edges;
+    vector<pair<NodeID, NodeID>> subgraph_edges;
     for (const auto &edge : all_edges)
     {
       if (remaining_nodes[edge.first] && remaining_nodes[edge.second])
@@ -428,7 +474,7 @@ extern "C" int run_pushrelabel(int argc, char **argv)
     if (subgraph_m == 0)
     {
       cout << "No edges remain. Assigning singletons." << endl;
-      for (int node_idx : subgraph_to_original_map)
+      for (NodeID node_idx : subgraph_to_original_map)
       {
         cluster_assignments[node_idx] = cluster_id_counter++;
         final_densities[node_idx] = 0.0;
@@ -436,43 +482,77 @@ extern "C" int run_pushrelabel(int argc, char **argv)
       break;
     }
 
+    // Run push-relabel to find the densest subset
     pair<vector<char>, double> result = find_densest_subgraph(subgraph_edges, subgraph_n, subgraph_m, max_iter, accuracy);
     vector<char> densest_nodes_mask = result.first;
     double found_density = result.second;
 
-    int nodes_in_cluster = 0;
-    for (int i = 0; i < subgraph_n; ++i)
+    if (found_density < density_threshold)
     {
-      if (densest_nodes_mask[i])
+      cout << "Densest subset density " << found_density << " is below threshold " << density_threshold << ". Stopping iteration." << endl;
+      break;
+    }
+
+    vector<vector<NodeID>> components = get_components_in_subgraph(subgraph_n, subgraph_edges, densest_nodes_mask);
+
+    if (components.empty())
+    {
+      cout << "Could not extract a dense cluster (empty). Halting." << endl;
+      break;
+    }
+
+    cout << "Densest subset density: " << found_density << ". Decomposed into " << components.size() << " component(s)." << endl;
+
+    NodeID nodes_removed_this_step = 0;
+    for (const auto &comp : components)
+    {
+      for (NodeID sub_u : comp)
       {
-        int original_node_idx = subgraph_to_original_map[i];
+        NodeID original_node_idx = subgraph_to_original_map[sub_u];
         if (remaining_nodes[original_node_idx])
         {
           cluster_assignments[original_node_idx] = cluster_id_counter;
           final_densities[original_node_idx] = found_density;
           remaining_nodes[original_node_idx] = false;
-          remaining_node_count--;
-          nodes_in_cluster++;
+          nodes_removed_this_step++;
         }
       }
+      cluster_id_counter++;
     }
-
-    if (nodes_in_cluster == 0)
-    {
-      cout << "Could not extract a dense cluster. Halting." << endl;
-      break;
-    }
-
-    cout << "Found cluster " << cluster_id_counter << " with " << nodes_in_cluster << " nodes and density " << found_density << endl;
-    cluster_id_counter++;
+    remaining_node_count -= nodes_removed_this_step;
+    cout << "Removed " << nodes_removed_this_step << " nodes. " << remaining_node_count << " nodes remaining." << endl;
   }
 
+  // --- POST-PROCESSING: Filter Singletons ---
+  map<long long, int> cluster_sizes;
+  for (NodeID i = 0; i < n_total; ++i)
+  {
+    if (cluster_assignments[i] != -1)
+    {
+      cluster_sizes[cluster_assignments[i]]++;
+    }
+  }
+
+  long long singleton_count = 0;
+  for (NodeID i = 0; i < n_total; i++)
+  {
+    long long cid = cluster_assignments[i];
+    // Check if it's a valid cluster and has size 1
+    if (cid != -1 && cluster_sizes[cid] == 1)
+    {
+      cluster_assignments[i] = -1; // Mark as noise
+      singleton_count++;
+    }
+  }
+  cout << "\nRemoved " << singleton_count << " singleton clusters (set to -1) before writing." << endl;
+
+  // --- OUTPUT WRITING ---
   auto start_write = chrono::high_resolution_clock::now();
-  write_vprop_vector<long long>(output_filepath, cluster_assignments.size(), integer_to_original_map, cluster_assignments, '\t');
-  cout << "\n[TIME] Writing final assignments: " << chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - start_write).count() << " ms" << endl;
+  write_cluster_assignments(output_filepath, n_total, integer_to_original_map, cluster_assignments);
+  cout << "[TIME] Writing final assignments: " << chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - start_write).count() << " ms" << endl;
 
   auto start_write_density = chrono::high_resolution_clock::now();
-  write_vprop_vector<double>(density_filepath, final_densities.size(), integer_to_original_map, final_densities, '\t');
+  write_density_values(density_filepath, n_total, integer_to_original_map, final_densities);
   cout << "[TIME] Writing final density vector: " << chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now() - start_write_density).count() << " ms" << endl;
 
   auto end_total = chrono::high_resolution_clock::now();

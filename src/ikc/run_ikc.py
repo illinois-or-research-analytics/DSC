@@ -5,6 +5,7 @@ import logging
 import argparse
 from pathlib import Path
 
+import pandas as pd
 import networkit as nk
 
 
@@ -31,13 +32,21 @@ def main(args):
 
     start = time.perf_counter()
 
-    edge_list_reader = nk.graphio.EdgeListReader(
-        "\t", 0, continuous=False, directed=True
-    )
-    graph1 = edge_list_reader.read(edgelist)
-    node_id_map = edge_list_reader.getNodeMap()
-    inverted_node_id_map = dict(map(reversed, node_id_map.items()))
+    # Reading the edgelist using Pandas
+    logging.info(f"Reading edgelist from {edgelist}...")
+    df = pd.read_csv(edgelist)
 
+    # Map string IDs to integer IDs
+    unique_nodes = pd.unique(df[["source", "target"]].values.ravel("K"))
+    node_map = {name: i for i, name in enumerate(unique_nodes)}
+    inverted_node_id_map = {i: name for name, i in node_map.items()}
+
+    # Create Networkit graph
+    graph1 = nk.Graph(n=len(unique_nodes), weighted=False, directed=True)
+    for row in df.itertuples(index=False):
+        graph1.addEdge(node_map[row.source], node_map[row.target])
+
+    # Format graph (removes self loops, handles weights if necessary)
     graph, node_id_dict = format_graph(graph1)
 
     elapsed = time.perf_counter() - start
@@ -64,28 +73,40 @@ def main(args):
 
 def print_clusters(clusters, out_dir, inverted_node_id_map):
     """
-    This writes a csv containing lines with the:
-    node Id, cluster nbr, and value of k for which cluster nbr was generated
-    INPUT
-    -----
-    clusters : a list of clusters represented as lists of nodes in each cluster
-    outDir : the file path and name of the ouput
+    Writes the clustering result to com.csv.
+    Format: node_id,cluster_id
+    - Filters out singleton clusters.
+    - Ensures cluster_id starts at 0 and is consecutive.
     """
-    # the index indicates the order for when the cluster number was generated
-    index = 0
-    k = 0
-    with open("{}/com.tsv".format(out_dir), "w") as output:
-        csvwriter = csv.writer(output, delimiter="\t", lineterminator="\n")
+    output_file = out_dir / "com.csv"
+
+    # Counter for consecutive cluster IDs (0, 1, 2...)
+    cluster_id_counter = 0
+    singleton_count = 0
+
+    with open(output_file, "w") as output:
+        # Change delimiter to comma and add header
+        csvwriter = csv.writer(output, delimiter=",", lineterminator="\n")
+        csvwriter.writerow(["node_id", "cluster_id"])
+
         for cluster_info in clusters:
             (cluster, k, modularity_score) = cluster_info
 
+            # Filter singletons
             if len(cluster) <= 1:
+                singleton_count += 1
                 continue
 
-            index += 1
-            # print a separate line for each node in each cluster
+            # Write all nodes in this cluster
             for node in cluster:
-                csvwriter.writerow([inverted_node_id_map[node], index])
+                csvwriter.writerow([inverted_node_id_map[node], cluster_id_counter])
+
+            # Increment cluster ID only after writing a valid cluster
+            cluster_id_counter += 1
+
+    if not quiet:
+        logging.info(f"Removed {singleton_count} singleton clusters.")
+        logging.info(f"Saved {cluster_id_counter} valid communities to {output_file}")
 
 
 def iterative_k_core_decomposition_MCS_ES(graph, k, inverted_orig_node_ids):

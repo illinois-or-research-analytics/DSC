@@ -4,7 +4,7 @@
 
 CXXFLAGS = -std=c++17 -O2 -Iexternal/exactDSP-cpp -fno-lto
 #CFLAGS = -O4 -Wall -march=native -flto -Iexternal/exactDSP-cpp -DNO_MAIN -DNDEBUG -DCUT_ONLY
-CFLAGS = -O4 -Wall -march=native -Iexternal/exactDSP-cpp -DNO_MAIN -DNDEBUG -DCUT_ONLY -fno-lto
+CFLAGS = -O4 -Wall -Iexternal/exactDSP-cpp -DNO_MAIN -DNDEBUG -DCUT_ONLY -fno-lto
 
 # Forced include for parser.c to get types like node, arc
 FORCE_INCLUDE = \

@@ -1,0 +1,4 @@
+test/output/dnc//dsc-flow-iter//com.csv
+test/output/dnc//leiden-mod//com.csv
+test/output/dnc//rtrex//com.csv
+test/output/dnc//ikc-5//com.csv

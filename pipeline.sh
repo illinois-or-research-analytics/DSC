@@ -1,12 +1,23 @@
-#!/bin/sh
+#!/bin/bash
 
 edgelist=$1
 out_root=$2
 
-if [ $# -ne 2 ]; then
-    echo "Usage: ./pipeline.sh <edgelist> <output-root>"
-    exit 1
-fi
+# -------------------------------------------------------------------
+# Define the methods to run and merge here
+# Supports: 
+#   - dsc-flow-iter
+#   - leiden-mod
+#   - rtrex
+#   - ikc-<kvalue>           (e.g., ikc-5, ikc-10)
+#   - leiden-cpm-<resolution> (e.g., leiden-cpm-0.1, leiden-cpm-0.01)
+# -------------------------------------------------------------------
+METHODS=(
+    "dsc-flow-iter"
+    "leiden-mod"
+    "rtrex"
+    "ikc-5"
+)
 
 if [ ! -f ${edgelist} ]; then
     echo "Error: Edgelist file ${edgelist} not found!"
@@ -15,107 +26,142 @@ fi
 
 mkdir -p ${out_root}
 
-out_leiden_mod=${out_root}/leiden-mod/
-mkdir -p ${out_leiden_mod}
-{ /usr/bin/time -v python src/leiden/run_leiden.py \
-    --edgelist ${edgelist} \
-    --output-directory ${out_leiden_mod} \
-    --model mod; } 2> ${out_leiden_mod}/error.log
-
-if [ ! -f ${out_leiden_mod}/com.tsv ]; then
-    echo "Error: Leiden-Mod did not produce a community file at ${out_leiden_mod}/com.tsv"
-    exit 1
-fi
-
-out_flow=${out_root}/dsc-flow-iter/
-mkdir -p ${out_flow}
-{ /usr/bin/time -v ./bin/flow-iter \
-    ${edgelist} \
-    ${out_flow}/com.tsv \
-    ${out_flow}/density.tsv; } 1> ${out_flow}/run.log 2> ${out_flow}/error.log
-
-if [ ! -f ${out_flow}/com.tsv ]; then
-    echo "Error: DSC-Flow-Iter did not produce a community file at ${out_flow}/com.tsv"
-    exit 1
-fi
-
-out_flow_cc=${out_root}/dsc-flow-iter+cc/
-mkdir -p ${out_flow_cc}
-{ /usr/bin/time -v ./constrained-clustering/constrained_clustering \
-    MincutOnly \
-    --edgelist ${edgelist} \
-    --existing-clustering ${out_flow}/com.tsv \
-    --num-processors 1 \
-    --output-file ${out_flow_cc}/com.tsv \
-    --log-file ${out_flow_cc}/cc.log \
-    --log-level 1 \
-    --connectedness-criterion 0; } 2> ${out_flow_cc}/error.log
-
-if [ ! -f ${out_flow_cc}/com.tsv ]; then
-    echo "Error: DSC-Flow-Iter+CC did not produce a community file at ${out_flow_cc}/com.tsv"
-    exit 1
-fi
-
+# Prepare the merge list file
 out_merge=${out_root}/merged/
 mkdir -p ${out_merge}
+merge_list_file="${out_merge}/clustering_list.txt"
+> "${merge_list_file}"
 
-echo "${out_leiden_mod}/com.tsv" > ${out_merge}/clustering_list.txt
-echo "${out_flow_cc}/com.tsv" >> ${out_merge}/clustering_list.txt
+# ---------------------------------------------------------
+# PIPELINE EXECUTION LOOP
+# ---------------------------------------------------------
+echo "Starting pipeline with methods: ${METHODS[*]}"
+
+for method in "${METHODS[@]}"; do
+    echo "Processing method: $method"
+    
+    # Defaults
+    run_cmd=""
+    check_file=""
+    method_out_dir="${out_root}/${method}/"
+    mkdir -p "${method_out_dir}"
+    
+    case "$method" in
+        dsc-flow-iter)
+            run_cmd="/usr/bin/time -v ./bin/flow-iter ${edgelist} ${method_out_dir}/com.csv ${method_out_dir}/density.csv"
+            check_file="${method_out_dir}/com.csv"
+            ;;
+            
+        leiden-mod)
+            run_cmd="/usr/bin/time -v python src/leiden/run_leiden.py --edgelist ${edgelist} --output-directory ${method_out_dir} --model mod"
+            check_file="${method_out_dir}/com.csv"
+            ;;
+            
+        rtrex)
+            run_cmd="/usr/bin/time -v python src/RTRex/run_RTRex.py --edgelist ${edgelist} --output-directory ${method_out_dir}"
+            check_file="${method_out_dir}/com.csv"
+            ;;
+            
+        ikc-*)
+            # Extract k-value (assumes format ikc-<k>)
+            k_val=$(echo "${method}" | cut -d'-' -f2)
+            run_cmd="/usr/bin/time -v python src/ikc/run_ikc.py --edgelist ${edgelist} --output-directory ${method_out_dir} --kvalue ${k_val}"
+            check_file="${method_out_dir}/com.csv"
+            ;;
+            
+        leiden-cpm-*)
+            # Extract resolution (assumes format leiden-cpm-<res>)
+            res_val=$(echo "${method}" | cut -d'-' -f3)
+            run_cmd="/usr/bin/time -v python src/leiden/run_leiden.py --edgelist ${edgelist} --output-directory ${method_out_dir} --model cpm --resolution ${res_val}"
+            check_file="${method_out_dir}/com.csv"
+            ;;
+            
+        *)
+            echo "Warning: Unknown method '$method'. Skipping."
+            continue
+            ;;
+    esac
+
+    # Execute the command
+    echo "Running: $method"
+    eval "${run_cmd}" 1> "${method_out_dir}/output.log" 2> "${method_out_dir}/error.log"
+
+    # Verify Output
+    if [ ! -f "${check_file}" ]; then
+        echo "Error: $method did not produce a community file at ${check_file}"
+        exit 1
+    fi
+
+    # Append to clustering list for merger
+    echo "${check_file}" >> "${merge_list_file}"
+done
+
+# ---------------------------------------------------------
+# MERGER STEP
+# ---------------------------------------------------------
+echo "Running Merger..."
 
 { /usr/bin/time -v ./ClusterMerger/cluster_merger \
     Weighted \
     --edgelist ${edgelist} \
-    --clustering-list ${out_merge}/clustering_list.txt \
+    --clustering-list ${merge_list_file} \
     --weighting-strategy 0 \
     --threshold 0.5 \
     --num-processors 1 \
     --output-file "" \
-    --output-weighted-graph ${out_merge}/edge.tsv \
+    --output-weighted-graph ${out_merge}/edge.csv \
     --log-file ${out_merge}/run.log \
-    --log-level 1; } 2> ${out_merge}/error.log
+    --log-level 1; } 1> ${out_merge}/output.log 2> ${out_merge}/error.log
 
-if [ ! -f ${out_merge}/edge.tsv ]; then
-    echo "Error: Merger did not produce an edge file at ${out_merge}/edge.tsv"
+if [ ! -f ${out_merge}/edge.csv ]; then
+    echo "Error: Merger did not produce an edge file at ${out_merge}/edge.csv"
     exit 1
 fi
 
+# ---------------------------------------------------------
+# FINAL CLUSTERING STEP AND POST-PROCESSING
+# ---------------------------------------------------------
+echo "Running Final Clustering and Post-processing..."
+
 out_unweighted=${out_root}/unweighted/
 mkdir -p ${out_unweighted}
-{ /usr/bin/time -v python src/pipeline/unweight.py \
-    --input-network ${out_merge}/edge.tsv \
-    --output-network ${out_unweighted}/edge.tsv; } 1> ${out_unweighted}/run.log 2> ${out_unweighted}/error.log
+{ /usr/bin/time -v python src/unweight.py \
+    --input-network ${out_merge}/edge.csv \
+    --output-network ${out_unweighted}/edge.csv; } 1> ${out_unweighted}/output.log 2> ${out_unweighted}/error.log
 
-if [ ! -f ${out_unweighted}/edge.tsv ]; then
-    echo "Error: Unweighted did not produce an edgelist file at ${out_unweighted}/edge.tsv"
+if [ ! -f ${out_unweighted}/edge.csv ]; then
+    echo "Error: Unweighted did not produce an edgelist file at ${out_unweighted}/edge.csv"
     exit 1
 fi
 
 out_final=${out_root}/final/
 mkdir -p ${out_final}
 { /usr/bin/time -v python src/leiden/run_leiden.py \
-    --edgelist ${out_unweighted}/edge.tsv \
+    --edgelist ${out_unweighted}/edge.csv \
     --output-directory ${out_final} \
     --model cpm \
-    --resolution 0.01; } 2> ${out_final}/error.log
+    --resolution 0.01; } 1> ${out_final}/output.log 2> ${out_final}/error.log
 
-if [ ! -f ${out_final}/com.tsv ]; then
-    echo "Error: Leiden-CPM(0.01) did not produce a community file at ${out_final}/com.tsv"
+if [ ! -f ${out_final}/com.csv ]; then
+    echo "Error: Leiden-CPM(0.01) did not produce a community file at ${out_final}/com.csv"
     exit 1
 fi
 
-out_wcc=${out_root}/wcc/
+out_wcc=${out_root}/final+wcc/
 mkdir -p ${out_wcc}
 { /usr/bin/time -v ./constrained-clustering/constrained_clustering \
     MincutOnly \
-    --edgelist ${out_unweighted}/edge.tsv \
-    --existing-clustering ${out_final}/com.tsv \
+    --connectedness-criterion "1log_10(n)" \
+    --edgelist ${out_unweighted}/edge.csv \
+    --existing-clustering ${out_final}/com.csv \
     --num-processors 1 \
-    --output-file ${out_wcc}/com.tsv \
+    --output-file ${out_wcc}/com.csv \
     --log-file ${out_wcc}/wcc.log \
-    --log-level 1 \
-    --connectedness-criterion 1; } 2> ${out_wcc}/error.log
+    --log-level 1; } 1> ${out_wcc}/output.log 2> ${out_wcc}/error.log
 
-if [ ! -f ${out_wcc}/com.tsv ]; then
-    echo "Error: WCC did not produce a community file at ${out_wcc}/com.tsv"
+if [ ! -f ${out_wcc}/com.csv ]; then
+    echo "Error: WCC did not produce a community file at ${out_wcc}/com.csv"
     exit 1
 fi
+
+echo "Pipeline finished successfully."

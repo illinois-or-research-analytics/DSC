@@ -1,0 +1,4 @@
+# Ignore compilation artifacts
+*.o
+build/
+bin/
