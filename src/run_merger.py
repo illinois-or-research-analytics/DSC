@@ -54,7 +54,7 @@ def main(
 
     subprocess.run(
         [
-            "./ClusterMerger/cluster_merger",
+            "./externals/ClusterMerger/cluster_merger",
             "Weighted",
             "--edgelist",
             input_network,

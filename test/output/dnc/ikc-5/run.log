@@ -1,6 +1,0 @@
-2026-02-21 16:12:23,000 - INFO - Reading edgelist from test/input/dnc.csv...
-2026-02-21 16:12:23,029 - INFO - [TIME] Loading network: 0.029429558999254368
-2026-02-21 16:12:23,077 - INFO - [TIME] Running IKC algorithm: 0.04728280300332699
-2026-02-21 16:12:23,077 - INFO - Removed 643 singleton clusters.
-2026-02-21 16:12:23,077 - INFO - Saved 9 valid communities to test/output/dnc/ikc-5/com.csv
-2026-02-21 16:12:23,077 - INFO - [TIME] Saving results: 0.0004297819978091866

@@ -1,0 +1,23 @@
+Reading edgelist from examples/input/bitcoin_alpha.csv...
+not weighted
+3783
+[TIME] Loading network: 0.014315822991193272
+k value 19 nbr core members 92
+adding cluster length 92
+nbr components: 1 ,  nbr components with more than 100 nodes: 0
+nodes left in graph:  3691
+k value 10 nbr core members 16
+adding cluster length 16
+nbr components: 1 ,  nbr components with more than 100 nodes: 0
+nodes left in graph:  3675
+k value 6 nbr core members 133
+adding cluster length 133
+nbr components: 1 ,  nbr components with more than 100 nodes: 1
+nodes left in graph:  3542
+k value 4 nbr core members 86
+nbr of clusters which were rejected since they were not k-valid :  0
+nbr of clusters which were rejected since they were not modular :  0
+[TIME] Running IKC algorithm: 0.010174498995183967
+Removed 3542 singleton clusters.
+Saved 3 valid communities to examples/output/bitcoin_alpha/clusterings/ikc-5/com.csv
+[TIME] Saving results: 0.00043603598896879703

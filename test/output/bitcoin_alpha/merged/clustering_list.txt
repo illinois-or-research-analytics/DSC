@@ -1,4 +1,0 @@
-test/output/bitcoin_alpha/dsc-flow-iter//com.csv
-test/output/bitcoin_alpha/leiden-mod//com.csv
-test/output/bitcoin_alpha/rtrex//com.csv
-test/output/bitcoin_alpha/ikc-5//com.csv

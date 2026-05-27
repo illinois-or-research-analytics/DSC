@@ -1,0 +1,4 @@
+examples/output/bitcoin_alpha/clusterings/flow-iter/com.csv
+examples/output/bitcoin_alpha/clusterings/leiden-mod/com.csv
+examples/output/bitcoin_alpha/clusterings/RTRex/com.csv
+examples/output/bitcoin_alpha/clusterings/ikc-5/com.csv

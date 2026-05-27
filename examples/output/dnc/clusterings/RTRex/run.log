@@ -1,0 +1,12 @@
+2026-05-26 22:28:51,194 - INFO - Reading edgelist from /home/vltanh/Downloads/DSC_journal/DSC/examples/input/dnc.csv...
+2026-05-26 22:28:51,200 - INFO - Writing formatted edgelist to /home/vltanh/Downloads/DSC_journal/DSC/examples/output/dnc/clusterings/RTRex/temp.edgelist
+2026-05-26 22:28:51,200 - INFO - Graph stats: Vertices=906, Edges=10429
+2026-05-26 22:28:51,204 - INFO - [TIME] Loading network and formatting: 0.0098s
+2026-05-26 22:28:51,204 - INFO - Switching working directory to: /home/vltanh/Downloads/DSC_journal/DSC/examples/output/dnc/clusterings/RTRex
+2026-05-26 22:28:51,204 - INFO - Executing command: /home/vltanh/Downloads/DSC_journal/DSC/bin/RTRex /home/vltanh/Downloads/DSC_journal/DSC/examples/output/dnc/clusterings/RTRex/temp.edgelist com 0.1 s
+2026-05-26 22:28:51,226 - INFO - [TIME] Running RTRex algorithm: 0.0215s
+2026-05-26 22:28:51,226 - INFO - Processing clustering from RTRex-com-decomposition.txt...
+2026-05-26 22:28:51,226 - INFO - Ignored 561 singleton clusters.
+2026-05-26 22:28:51,226 - INFO - Found 40 valid communities.
+2026-05-26 22:28:51,228 - INFO - Final clustering saved to /home/vltanh/Downloads/DSC_journal/DSC/examples/output/dnc/clusterings/RTRex/com.csv
+2026-05-26 22:28:51,228 - INFO - [TIME] Saving results: 0.0020s
