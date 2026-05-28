@@ -4,7 +4,7 @@
 
 The repository contains the implementation of density-based community detection methods, including the recommended DSC-Flow-Iter and other methods such as DSC-FISTA(int), DSC-FISTA(int)-Iter, DSC-FISTA-Iter, and DSC-Flow.
 
-The preprint of the conference version related to the work and supplementary materials can be found [here](https://doi.org/10.1007/978-3-032-16719-4_3). If you use our work, you can use the following BibTeX entry to cite.
+The conference version related to the work and supplementary materials can be found [here](https://doi.org/10.1007/978-3-032-16719-4_3). If you use our work, you can use the following BibTeX entry to cite.
 ```
 @InProceedings{10.1007/978-3-032-16719-4_3,
     author="Vu-Le, The-Anh and Lamy, Jo{\~a}o Alfredo Cardoso and Alessi, Tom{\'a}s and Chen, Ian and Park, Minhyuk and Harb, Elfarouk and Chacko, George and Warnow, Tandy",
