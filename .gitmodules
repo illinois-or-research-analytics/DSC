@@ -1,9 +1,0 @@
-[submodule "constrained-clustering"]
-	path = externals/constrained-clustering
-	url = git@github.com:MinhyukPark/constrained-clustering.git
-[submodule "ClusterMerger"]
-	path = externals/ClusterMerger
-	url = git@github.com:illinois-or-research-analytics/ClusterMerger.git
-[submodule "amazon-RTRExtractor"]
-	path = externals/amazon-RTRExtractor
-	url = git@github.com:amazon-science/amazon-RTRExtractor.git

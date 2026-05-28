@@ -1,4 +1,0 @@
-examples/output/dnc/clusterings/flow-iter/com.csv
-examples/output/dnc/clusterings/leiden-mod/com.csv
-examples/output/dnc/clusterings/RTRex/com.csv
-examples/output/dnc/clusterings/ikc-5/com.csv

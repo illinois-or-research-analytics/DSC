@@ -1,6 +1,0 @@
-2026-05-26 22:28:42,533 - INFO - Reading edgelist from examples/input/bitcoin_alpha.csv...
-2026-05-26 22:28:42,547 - INFO - [TIME] Loading network: 0.014315822991193272
-2026-05-26 22:28:42,558 - INFO - [TIME] Running IKC algorithm: 0.010174498995183967
-2026-05-26 22:28:42,558 - INFO - Removed 3542 singleton clusters.
-2026-05-26 22:28:42,558 - INFO - Saved 3 valid communities to examples/output/bitcoin_alpha/clusterings/ikc-5/com.csv
-2026-05-26 22:28:42,558 - INFO - [TIME] Saving results: 0.00043603598896879703
