@@ -4,6 +4,8 @@
 
 The repository contains the implementation of density-based community detection methods, including the recommended DSC-Flow-Iter and other methods such as DSC-FISTA(int), DSC-FISTA(int)-Iter, DSC-FISTA-Iter, and DSC-Flow.
 
+All code in [`src`](src) is a modification made by The-Anh Vu-Le of code provided by El-Farouk Harb in May 2025. Harb’s code (available at [this repo](https://github.com/FaroukY/CorporateEquivalence)) solves the dense subgraph problem using FISTA and Flow (Harb et al., NeurIPS 2025). The modifications allow iterative densest subgraph extraction for Flow. For FISTA, the modifications allow integer rounding, combined with iterative densest subgraph extraction for both integer rounding and fractional peeling.
+
 The conference version related to the work can be found [here](https://doi.org/10.1007/978-3-032-16719-4_3). The supplementary material is available [here](https://arxiv.org/pdf/2508.17013) (see pages 13-25). If you use our work, please use the following BibTeX entry to cite.
 ```
 @InProceedings{10.1007/978-3-032-16719-4_3,
@@ -20,8 +22,6 @@ The conference version related to the work can be found [here](https://doi.org/1
 ```
 
 The journal version related to the work, with more focus on the cluster ensemble, can be found [here](https://doi.org/10.1007/s41109-026-00809-z). 
-
-All code in [`src`](src) is a modification made by The-Anh Vu-Le of code provided by El-Farouk Harb in May 2025. Harb’s code (available at [this repo](https://github.com/FaroukY/CorporateEquivalence)) solves the dense subgraph problem using FISTA and Flow (Harb et al., NeurIPS 2025). The modifications allow iterative densest subgraph extraction for Flow. For FISTA, the modifications allow integer rounding, combined with iterative densest subgraph extraction for both integer rounding and fractional peeling.
 
 ## Usage
 
